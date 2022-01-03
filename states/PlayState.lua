@@ -8,22 +8,37 @@ BIRD_WIDTH = 38
 BIRD_HEIGHT = 24
 
 function PlayState:init()
-    self.bird = Bird()
-    self.pipePairs = {}
-    self.timer = 0
-    self.score = 0
-    self.lastY = -PIPE_HEIGHT + math.random(80) + 20
+end
+
+function PlayState:enter(params)
+    if params ~= nil then
+        self.bird = params['bird']
+        self.pipePairs = params['pipePairs']
+        self.timer = params['timer']
+        self.score = params['score']
+        self.lastY = params['lastY']
+    end     
 end
 
 function PlayState:update(dt)
+    if love.keyboard.wasPressed('enter') or love.keyboard.wasPressed('return') then
+        gStateMachine:change('pause', {
+            bird = self.bird,
+            pipePairs = self.pipePairs,
+            timer = self.timer,
+            score = self.score,
+            lastY = self.lastY
+        })
+    end
+
     self.timer = self.timer + dt
 
     if self.timer > 2 then
-        local y = math.max(-PIPE_HEIGHT + 10, 
+        local y = math.max(-PIPE_HEIGHT + 10,
             math.min(self.lastY + math.random(-20, 20), VIRTUAL_HEIGHT - 90 - PIPE_HEIGHT))
         self.lastY = y
         table.insert(self.pipePairs, PipePair(y))
-        self.timer = 0
+        self.timer = math.random(-0.4, 0.4)
     end
 
     for k, pair in pairs(self.pipePairs) do
@@ -31,6 +46,7 @@ function PlayState:update(dt)
             if pair.x + PIPE_WIDTH < self.bird.x then
                 self.score = self.score + 1
                 pair.scored = true
+                sounds['score']:play()
             end
         end
         pair:update(dt)
@@ -47,6 +63,8 @@ function PlayState:update(dt)
     for k, pair in pairs(self.pipePairs) do
         for l, pipe in pairs(pair.pipes) do
             if self.bird:collides(pipe) then
+                sounds['explosion']:play()
+                sounds['hurt']:play()
                 gStateMachine:change('score', {
                     score = self.score
                 })
@@ -54,7 +72,9 @@ function PlayState:update(dt)
         end
     end
 
-    if self.bird.y > VIRTUAL_HEIGHT - 15 then
+    if self.bird.y > VIRTUAL_HEIGHT - 15 or self.bird.y < 0 then
+        sounds['explosion']:play()
+        sounds['hurt']:play()
         gStateMachine:change('score', {
             score = self.score
         })
